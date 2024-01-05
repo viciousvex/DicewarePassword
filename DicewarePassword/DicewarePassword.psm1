@@ -184,6 +184,9 @@ function New-DicewarePassword {
 		High = 6 words
 		Extreme = 7 words
 		UnHackable = 8 words
+    .PARAMETER  ConcatinationChar
+        Desired character that is used for joining the words of the passphrase.
+
 	.EXAMPLE
 		New-DicewarePassword -Verbose
 
@@ -213,8 +216,9 @@ function New-DicewarePassword {
 		[System.String]$FetchType = 'Local',
 
 		[Parameter(Position = 1, ParameterSetName = 'Web')]
-		[ValidateScript({ (Invoke-WebRequest -Uri $URI).StatusCode -eq 200 })]
-		[System.String]$URI = 'https://dl.dropboxusercontent.com/u/22332521/DicewareWordList.csv',
+  
+		[ValidateScript({ (Invoke-WebRequest -Uri $_).StatusCode -eq 200 })]
+		[System.String]$URI = 'https://github.com/dys2p/wordlists-de/blob/main/de-7776-v1-diceware.txt',
 
 		[Parameter(Position = 2, ParameterSetName = 'Local')]
 		[ValidateScript({ Test-Path -LiteralPath $Path -PathType Leaf })]
@@ -222,7 +226,11 @@ function New-DicewarePassword {
 
 		[Parameter(Position = 3)]
 		[ValidateSet('Average', 'High', 'Extreme', 'UnHackable')]
-		[System.String]$SecurityLevel = 'Average'
+		[System.String]$SecurityLevel = 'Average',
+
+		[Parameter(Position = 4, Mandatory = $false)]
+		[System.String]$ConcatinationCharacter = '-'
+
 	)
 
 	BEGIN {
@@ -288,9 +296,8 @@ function New-DicewarePassword {
 		try {
 
 			$i = 0
-			$result1 = $null
-			$result2 = $null
-
+			$result = [System.Collections.ArrayList]::new()
+			
 			for (; $i -lt $diceRollCount; $i++) {
 
 				$word     = $null
@@ -299,14 +306,16 @@ function New-DicewarePassword {
 				$diceRoll = Invoke-DiceRoll -ErrorAction Stop
 				$word     = ($wordList | Where-Object { $_.Number -eq $diceRoll }).Word
 
-				$result1 += " $word"
-				$result2 += $word
+				$result.Add($word)
 
 			} # end for loop
 
 			[PSCustomObject] @{
-				PassWord       = $result2.Trim()
-				SpacedPassWord = $result1.Trim()
+				Password       = $result -join ''
+				SpacedPassword = $result -join ' '
+                HyphenPassword = $result -join '-'
+                ConcatinatedPassword = $result -join $ConcatinationCharacter
+                FirstUpperPassword = ($result | % { $_.substring(0,1).toupper() + $_.substring(1) }) -join $ConcatinationCharacter
 			}
 
 
@@ -328,4 +337,5 @@ function New-DicewarePassword {
 } # end function New-DicewarePassword
 
 
-Export-ModuleMember -Function *
+Export-ModuleMember -Function New-DicewarePassword, Invoke-DiceRoll
+
