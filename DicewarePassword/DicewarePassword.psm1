@@ -1,5 +1,67 @@
 [System.Security.Cryptography.RandomNumberGenerator]$rng = [System.Security.Cryptography.RNGCryptoServiceProvider]::Create()
 
+function ConvertFrom-TextDictionary {
+<#
+	.SYNOPSIS
+		Converts a series of Diceware words into a propper wordlist
+	.DESCRIPTION
+		Diceware wordlists come in a variety of formats. This function converts a simple newline separated wordlist into
+        a wordlist that has the attributes Number and Word. Each word represented by exactly one dice throw.
+	.PARAMETER Separator
+		The separator that is used in between words.
+	.EXAMPLE
+		ConvertFrom-TextDictionary -separator CRLF $wordlist
+	.OUTPUTS
+		[PSCustomObject][]
+	.NOTES
+		Author: Alex
+		Contact: https://github.com/viciousvex
+		Version: 1.0
+		Last Updated: 20240111
+		Last Updated By: Alex
+		Last Update Notes:
+		- Created
+#>
+
+	[CmdletBinding()]
+	param (
+		[Parameter(Position = 0, Mandatory = $false)]
+		[String]$Separator = "`n",
+
+        [Parameter(Position = 1, Mandatory = $true)]
+        $wordlist
+       
+	)
+
+    
+    BEGIN {
+        Write-Host ("We got an argument wordlist with type {0}" -f $wordlist.GetType())
+
+        if ($wordlist.GetType() -ne "System.String")  {
+            "BARKBARKBARK!"
+        }
+
+        $wordnum = 7776
+
+        if ($wordlist.count -eq $wordnum) {
+            Write-host ("User did not provide us with an array containing exactly {0} words." -f $wordnum)
+        } else {
+            Write-Host ("We might have some other form of object, the user handed to us...")
+            try {
+                if (($wordcount = ($wordlist -split $Separator).count) -eq $wordnum) {
+                    Write-host ("User did provide us with a wordlist that can be split into {0} words. Perfect!" -f $wordnum)
+                } else {
+                    Write-host ("User could only provide us with {0} words. Awww..." -f $wordcount)
+                }
+            }
+            catch {
+                Write-Error ("Could not split wordlist with separator {0}. Failed miserably because of {1}" -f $Separator, $Error)
+            }
+        }
+    }
+}
+
+
 function Get-SecureRandom {
 
 <#
@@ -113,14 +175,12 @@ function Invoke-DiceRoll {
 
 	PROCESS {
 
-		$i = 0
-
 		Write-Verbose -Message "[Invoke-DiceRoll] Rolling dice; generating a {$DiceCount} digit random number."
 		try {
 
 			$numberResult = $null
 
-			for (; $i -lt $DiceCount; $i++) {
+			for ($i = 0; $i -lt $DiceCount; $i++) {
 
 				$number = $null
 				$number = "$(Get-SecureRandom -Minimum 1 -Maximum 6)"
@@ -218,7 +278,7 @@ function New-DicewarePassword {
 		[Parameter(Position = 1, ParameterSetName = 'Web')]
   
 		[ValidateScript({ (Invoke-WebRequest -Uri $_).StatusCode -eq 200 })]
-		[System.String]$URI = 'https://github.com/dys2p/wordlists-de/blob/main/de-7776-v1-diceware.txt',
+		[System.String]$URI = 'https://raw.githubusercontent.com/cmdwtf/KeePassDiceware/main/Resources/German.txt',
 
 		[Parameter(Position = 2, ParameterSetName = 'Local')]
 		[ValidateScript({ Test-Path -LiteralPath $Path -PathType Leaf })]
@@ -243,7 +303,8 @@ function New-DicewarePassword {
 			try {
 
 				$wordList = $null
-				$wordList = Invoke-RestMethod -Uri $URI -Method Get -ErrorAction Stop | ConvertFrom-Csv -ErrorAction Stop
+				$wordList = Invoke-RestMethod -Uri $URI -Method Get -ErrorAction Stop
+                $wordList = ConvertFrom-TextDictionary -wordlist $wordList
 
 			} catch {
 
@@ -337,5 +398,5 @@ function New-DicewarePassword {
 } # end function New-DicewarePassword
 
 
-Export-ModuleMember -Function New-DicewarePassword, Invoke-DiceRoll
+Export-ModuleMember -Function New-DicewarePassword, Invoke-DiceRoll, Get-SecureRandom, ConvertFrom-TextDictionary
 
